@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, Alert, Modal, Image, TouchableOpacity, ScrollView, Dimensions, Platform } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, Alert, Image, TouchableOpacity, ScrollView, Dimensions, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { THEME } from '../src/utils/theme';
 import { supabase } from '../src/supabase';
 import { Button } from '../src/components/Button';
-import { CameraView, useCameraPermissions } from 'expo-camera';
+
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 
@@ -25,8 +25,7 @@ export default function DashboardScreen() {
   const [profile, setProfile] = useState<any>(null);
   const [authUser, setAuthUser] = useState<any>(null);
   
-  const [isScannerOpen, setIsScannerOpen] = useState(false);
-  const [permission, requestPermission] = useCameraPermissions();
+
 
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
@@ -93,6 +92,12 @@ export default function DashboardScreen() {
       return;
     }
 
+    // New user with no profile or incomplete profile → onboarding
+    if (!profile || !profile.contact_number || !profile.address) {
+      router.replace('/onboarding');
+      return;
+    }
+
     if (profile) {
       // Sync Google data offensively so we don't block UI if database update fails
       const updates: any = {};
@@ -143,20 +148,7 @@ export default function DashboardScreen() {
 
   function handleOpenScanner() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    if (!permission?.granted) {
-      requestPermission();
-    }
-    setIsScannerOpen(true);
-  }
-
-  function handleBarcodeScanned({ data }: { data: string }) {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setIsScannerOpen(false);
-    if (data.includes('/scan')) {
-      router.push('/scan?scanned=true');
-    } else {
-      Alert.alert('Invalid QR Code', 'Please scan a valid check-in code.');
-    }
+    router.push('/scan');
   }
 
   function getGreeting() {
@@ -327,32 +319,6 @@ export default function DashboardScreen() {
         </View>
       </View>
 
-      {/* SCANNER MODAL */}
-      <Modal visible={isScannerOpen} animationType="slide">
-         <View style={{ flex: 1, backgroundColor: '#000' }}>
-            <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
-              {permission && permission.granted ? (
-                 <View style={{ flex: 1, borderRadius: 24, overflow: 'hidden', margin: 16 }}>
-                    <CameraView
-                     style={{ flex: 1 }}
-                     facing="back"
-                     onBarcodeScanned={handleBarcodeScanned}
-                     barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
-                    />
-                 </View>
-              ) : (
-                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                  <Text style={{ color: '#fff', padding: 20, textAlign: 'center' }}>Camera permission is required.</Text>
-                  <Button label="Request Permission" onPress={requestPermission} style={{ width: 200 }} />
-                </View>
-              )}
-              
-              <View style={styles.scannerOverlay}>
-                 <Button label="Cancel" variant="outline" onPress={() => setIsScannerOpen(false)} style={{ backgroundColor: THEME.colors.background }} />
-              </View>
-            </SafeAreaView>
-         </View>
-      </Modal>
     </SafeAreaView>
   );
 }
@@ -579,10 +545,4 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     ...THEME.shadows.medium,
   },
-  scannerOverlay: {
-    position: 'absolute',
-    bottom: 40,
-    left: 20,
-    right: 20,
-  }
 });
