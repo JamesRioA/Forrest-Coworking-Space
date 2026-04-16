@@ -6,6 +6,11 @@ import { Input } from '../src/components/Input';
 import { Button } from '../src/components/Button';
 import { supabase } from '../src/supabase';
 import AntDesign from '@expo/vector-icons/AntDesign';
+import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
+
+// Ensure the browser session is properly cleared to avoid hanging states on mobile
+WebBrowser.maybeCompleteAuthSession();
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -29,16 +34,63 @@ export default function LoginScreen() {
 
   async function handleGoogleAuth() {
     setIsLoading(true);
-    const { error } = await supabase.auth.signInWithOAuth({ 
-      provider: 'google',
-      options: {
-        redirectTo: 'http://localhost:8081' // Local dev redirect, auto-handled in PWA
-      }
-    });
-    if (error) {
-      Alert.alert('Google Auth Failed', error.message);
-      setIsLoading(false);
+    
+    // Use an expo-managed deep link URI instead of a hardcoded localhost
+    const redirectUrl = Linking.createURL('/dashboard'); 
+
+    if (Platform.OS === 'web') {
+       const { error } = await supabase.auth.signInWithOAuth({ 
+          provider: 'google',
+          options: {
+            redirectTo: window.location.origin,
+          }
+       });
+       if (error) Alert.alert('Google Auth Failed', error.message);
+    } else {
+       const { data, error } = await supabase.auth.signInWithOAuth({ 
+         provider: 'google',
+         options: {
+           redirectTo: redirectUrl,
+           skipBrowserRedirect: true // Let expo-web-browser handle this
+         }
+       });
+       
+       if (error) {
+          Alert.alert('Google Auth Failed', error.message);
+       } else if (data?.url) {
+          try {
+             // Open the secure browser modal on the phone
+             const res = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
+             
+             if (res.type === 'success' && res.url) {
+                // Manually parse fragment because RN URL parsing is finicky with hashes
+                const urlObj = res.url;
+                const hashString = urlObj.includes('#') ? urlObj.substring(urlObj.indexOf('#') + 1) : null;
+                
+                if (hashString) {
+                    const params = hashString.split('&').reduce((acc, current) => {
+                        const [key, value] = current.split('=');
+                        acc[key] = decodeURIComponent(value);
+                        return acc;
+                    }, {} as Record<string, string>);
+                    
+                    if (params.access_token && params.refresh_token) {
+                        await supabase.auth.setSession({
+                            access_token: params.access_token,
+                            refresh_token: params.refresh_token
+                        });
+                        router.replace('/dashboard');
+                    }
+                }
+             }
+          } catch (e) {
+             console.log(e);
+             Alert.alert('Browser Flow Cancelled');
+          }
+       }
     }
+    
+    setIsLoading(false);
   }
 
   return (

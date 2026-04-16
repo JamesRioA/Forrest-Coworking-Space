@@ -4,7 +4,7 @@ import { THEME } from '../src/utils/theme';
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../src/supabase';
 import { Session } from '@supabase/supabase-js';
-import { View, Image, Animated, Easing, StyleSheet } from 'react-native';
+import { View, Image, Animated, Easing, StyleSheet, Platform } from 'react-native';
 
 const AppTheme = {
   ...DefaultTheme,
@@ -87,8 +87,7 @@ export default function RootLayout() {
     );
   }
 
-  return (
-    <ThemeProvider value={AppTheme}>
+  const content = (
       <Stack
         screenOptions={{
           headerStyle: { backgroundColor: THEME.colors.background },
@@ -104,7 +103,22 @@ export default function RootLayout() {
         <Stack.Screen name="onboarding" options={{ title: 'Complete Profile' }} />
         <Stack.Screen name="dashboard" options={{ title: 'Customer Dashboard', headerShown: false }} />
         <Stack.Screen name="admin" options={{ title: 'Admin Terminal', headerShown: false }} />
+        <Stack.Screen name="profile" options={{ headerShown: false }} />
+        <Stack.Screen name="profile-edit" options={{ headerShown: false }} />
       </Stack>
+  );
+
+  return (
+    <ThemeProvider value={AppTheme}>
+      {Platform.OS === 'web' ? (
+        <View style={{ flex: 1, backgroundColor: '#2C353E', alignItems: 'center', justifyContent: 'center' }}>
+          <View style={{ width: '100%', maxWidth: 430, height: '100%', maxHeight: 932, backgroundColor: THEME.colors.background, overflow: 'hidden' }}>
+             {content}
+          </View>
+        </View>
+      ) : (
+        content
+      )}
     </ThemeProvider>
   );
 }
