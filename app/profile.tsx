@@ -16,10 +16,13 @@ export default function ProfileScreen() {
   const [authUser, setAuthUser] = useState<any>(null);
   const [isLogoutModalVisible, setIsLogoutModalVisible] = useState(false);
 
-  // Mock stats for now since we don't have aggregates set up, 
-  // or we can try to fetch real stats if needed. I'll just use the UI design's numbers.
-  // Wait, I should probably do a real query for total sessions if possible.
-  const [stats, setStats] = useState({ total_sessions: 47, hours_logged: 126, member_since: "Jan '25" });
+  // Dynamic stats state initialized with 0s
+  const [stats, setStats] = useState({ 
+    total_sessions: 0, 
+    hours_logged: 0, 
+    third_card_label: 'VISITS',
+    third_card_value: '0' 
+  });
 
   useEffect(() => {
     loadProfile();
@@ -37,24 +40,40 @@ export default function ProfileScreen() {
     if (profile) {
       setProfile(profile);
       
-      // Calculate member since
-      const date = new Date(profile.created_at || user.created_at);
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const memberSinceStr = `${months[date.getMonth()]} '${date.getFullYear().toString().substring(2)}`;
-      
-      // Fetch actual stats - total sessions and hours
-      const { data: sessions } = await supabase
+      // 1. Fetch ALL completed sessions for lifetime stats
+      const { data: allSessions } = await supabase
         .from('sessions')
-        .select('start_time, end_time, status')
+        .select('start_time, end_time')
         .eq('profile_id', profile.id)
         .eq('status', 'completed');
         
-      let totalHours = 0;
-      let totalSessions = 0;
+      // 2. Fetch sessions for the current month
+      const startOfMonth = new Date();
+      startOfMonth.setDate(1);
+      startOfMonth.setHours(0, 0, 0, 0);
       
-      if (sessions && sessions.length > 0) {
-        totalSessions = sessions.length;
-        totalHours = sessions.reduce((acc, curr) => {
+      const { data: monthSessions } = await supabase
+        .from('sessions')
+        .select('id')
+        .eq('profile_id', profile.id)
+        .eq('status', 'completed')
+        .gte('start_time', startOfMonth.toISOString());
+
+      // 3. Check for first membership date
+      const { data: firstMembership } = await supabase
+        .from('memberships')
+        .select('start_date')
+        .eq('profile_id', profile.id)
+        .order('start_date', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      let totalHours = 0;
+      let totalSessions = allSessions?.length || 0;
+      let visitsThisMonth = monthSessions?.length || 0;
+      
+      if (allSessions && allSessions.length > 0) {
+        totalHours = allSessions.reduce((acc, curr) => {
            if (curr.start_time && curr.end_time) {
               const start = new Date(curr.start_time).getTime();
               const end = new Date(curr.end_time).getTime();
@@ -64,10 +83,22 @@ export default function ProfileScreen() {
         }, 0);
       }
 
+      // 4. Determine third card logic
+      let thirdCardLabel = 'VISITS';
+      let thirdCardValue = visitsThisMonth.toString();
+
+      if (profile.is_member) {
+        thirdCardLabel = 'MEMBER SINCE';
+        const joinDate = new Date(firstMembership?.start_date || profile.created_at || user.created_at);
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        thirdCardValue = `${months[joinDate.getMonth()]} '${joinDate.getFullYear().toString().substring(2)}`;
+      }
+
       setStats({
         total_sessions: totalSessions,
         hours_logged: Math.round(totalHours),
-        member_since: memberSinceStr
+        third_card_label: thirdCardLabel,
+        third_card_value: thirdCardValue
       });
     }
     setIsLoading(false);
@@ -117,7 +148,6 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView contentContainerStyle={{ paddingBottom: 140 }} showsVerticalScrollIndicator={false}>
-         
         {/* TOP BAR */}
         <View style={styles.topBar}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
@@ -151,6 +181,22 @@ export default function ProfileScreen() {
                   <Text style={[styles.badgeText, { color: THEME.colors.textMuted }]}>Not Member</Text>
                </View>
             )}
+
+            {/* CONTACT & ADDRESS INFO */}
+            <View style={styles.infoSummary}>
+               {!!profile?.contact_number && (
+                  <View style={styles.infoRow}>
+                     <Feather name="phone" size={14} color={THEME.colors.textMuted} />
+                     <Text style={styles.infoRowText}>{profile.contact_number}</Text>
+                  </View>
+               )}
+               {!!profile?.address && (
+                  <View style={styles.infoRow}>
+                     <Feather name="map-pin" size={14} color={THEME.colors.textMuted} />
+                     <Text style={styles.infoRowText}>{profile.address}</Text>
+                  </View>
+               )}
+            </View>
         </View>
 
         <View style={styles.content}>
@@ -165,8 +211,8 @@ export default function ProfileScreen() {
                  <Text style={styles.statLabel}>HOURS{'\n'}LOGGED</Text>
               </View>
               <View style={styles.statCard}>
-                 <Text style={styles.statValue}>{stats.member_since}</Text>
-                 <Text style={styles.statLabel}>MEMBER{'\n'}SINCE</Text>
+                 <Text style={styles.statValue}>{stats.third_card_value}</Text>
+                 <Text style={styles.statLabel}>{stats.third_card_label.split(' ').join('\n')}</Text>
               </View>
            </View>
 
@@ -182,7 +228,7 @@ export default function ProfileScreen() {
               
               <View style={styles.divider} />
               
-              <TouchableOpacity style={styles.menuItem}>
+              <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/sessions-history')}>
                  <View style={styles.menuItemLeft}>
                     <Feather name="clock" size={20} color={THEME.colors.textMuted} style={styles.menuIcon} />
                     <Text style={styles.menuItemText}>My Sessions</Text>
@@ -202,7 +248,7 @@ export default function ProfileScreen() {
               
               <View style={styles.divider} />
 
-              <TouchableOpacity style={styles.menuItem}>
+              <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/support')}>
                  <View style={styles.menuItemLeft}>
                     <Feather name="help-circle" size={20} color={THEME.colors.textMuted} style={styles.menuIcon} />
                     <Text style={styles.menuItemText}>Help & Support</Text>
@@ -225,7 +271,7 @@ export default function ProfileScreen() {
            <TouchableOpacity style={styles.navItem} onPress={() => router.push('/dashboard')}>
               <Feather name="home" size={24} color={THEME.colors.textMuted} style={{ opacity: 0.5 }} />
            </TouchableOpacity>
-           <TouchableOpacity style={styles.navItem} onPress={() => {}}>
+           <TouchableOpacity style={styles.navItem} onPress={() => router.push('/rooms')}>
               <Feather name="map" size={24} color={THEME.colors.textMuted} style={{ opacity: 0.5 }} />
            </TouchableOpacity>
            
@@ -365,6 +411,20 @@ const styles = StyleSheet.create({
     color: '#2E7D32',
     fontSize: 12,
     fontWeight: '600',
+  },
+  infoSummary: {
+    marginTop: THEME.spacing.md,
+    alignItems: 'center',
+    gap: THEME.spacing.xs,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  infoRowText: {
+    fontSize: 14,
+    color: THEME.colors.textMuted,
   },
   content: {
     paddingHorizontal: THEME.spacing.lg,

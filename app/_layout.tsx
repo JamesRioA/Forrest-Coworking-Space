@@ -4,7 +4,7 @@ import { THEME } from '../src/utils/theme';
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../src/supabase';
 import { Session } from '@supabase/supabase-js';
-import { View, Image, Animated, Easing, StyleSheet, Platform } from 'react-native';
+import { View, Text, Image, Animated, Easing, StyleSheet, Platform } from 'react-native';
 
 const AppTheme = {
   ...DefaultTheme,
@@ -78,9 +78,9 @@ export default function RootLayout() {
   if (!isResolved) {
     return (
       <View style={[StyleSheet.absoluteFill, { backgroundColor: THEME.colors.background, justifyContent: 'center', alignItems: 'center' }]}>
-        <Animated.Image 
-          source={require('../assets/forrest-logo.png')} 
-          style={{ width: 140, height: 140, opacity: opacityAnim, transform: [{ scale: scaleAnim }] }} 
+        <Animated.Image
+          source={require('../assets/forrest-logo.png')}
+          style={{ width: 140, height: 140, opacity: opacityAnim, transform: [{ scale: scaleAnim }] }}
           resizeMode="contain"
         />
       </View>
@@ -88,24 +88,27 @@ export default function RootLayout() {
   }
 
   const content = (
-      <Stack
-        screenOptions={{
-          headerStyle: { backgroundColor: THEME.colors.background },
-          headerTintColor: THEME.colors.primary,
-          headerShadowVisible: false,
-          contentStyle: { backgroundColor: THEME.colors.background },
-        }}
-      >
-        <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="login" options={{ title: 'Login', headerShown: false }} />
-        <Stack.Screen name="signup" options={{ title: 'Sign Up', headerShown: false }} />
-        <Stack.Screen name="scan" options={{ title: 'Scan Check-In', headerShown: false }} />
-        <Stack.Screen name="onboarding" options={{ title: 'Complete Profile' }} />
-        <Stack.Screen name="dashboard" options={{ title: 'Customer Dashboard', headerShown: false }} />
-        <Stack.Screen name="admin" options={{ title: 'Admin Terminal', headerShown: false }} />
-        <Stack.Screen name="profile" options={{ headerShown: false }} />
-        <Stack.Screen name="profile-edit" options={{ headerShown: false }} />
-      </Stack>
+    <Stack
+      screenOptions={{
+        headerStyle: { backgroundColor: THEME.colors.background },
+        headerTintColor: THEME.colors.primary,
+        headerShadowVisible: false,
+        contentStyle: { backgroundColor: THEME.colors.background },
+      }}
+    >
+      <Stack.Screen name="index" options={{ headerShown: false }} />
+      <Stack.Screen name="login" options={{ title: 'Login', headerShown: false }} />
+      <Stack.Screen name="signup" options={{ title: 'Sign Up', headerShown: false }} />
+      <Stack.Screen name="scan" options={{ title: 'Scan Check-In', headerShown: false }} />
+      <Stack.Screen name="onboarding" options={{ title: 'Complete Profile' }} />
+      <Stack.Screen name="dashboard" options={{ title: 'Customer Dashboard', headerShown: false }} />
+      <Stack.Screen name="rooms" options={{ title: 'Rooms', headerShown: false }} />
+      <Stack.Screen name="admin" options={{ title: 'Admin Terminal', headerShown: false }} />
+      <Stack.Screen name="profile" options={{ headerShown: false }} />
+      <Stack.Screen name="profile-edit" options={{ headerShown: false }} />
+      <Stack.Screen name="sessions-history" options={{ headerShown: false }} />
+      <Stack.Screen name="support" options={{ headerShown: false }} />
+    </Stack>
   );
 
   return (
@@ -113,7 +116,7 @@ export default function RootLayout() {
       {Platform.OS === 'web' ? (
         <View style={{ flex: 1, backgroundColor: '#2C353E', alignItems: 'center', justifyContent: 'center' }}>
           <View style={{ width: '100%', maxWidth: 430, height: '100%', maxHeight: 932, backgroundColor: THEME.colors.background, overflow: 'hidden' }}>
-             {content}
+            {content}
           </View>
         </View>
       ) : (

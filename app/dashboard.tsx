@@ -266,7 +266,7 @@ export default function DashboardScreen() {
            {/* QUICK ACCESS */}
            <Text style={styles.sectionHeader}>QUICK ACCESS</Text>
            <View style={styles.quickAccessRow}>
-              {[ { icon: 'door', label: 'Rooms' }, { icon: 'bed-outline', label: 'Capsule' }, { icon: 'qrcode-scan', label: 'Scan', action: handleOpenScanner }].map((item, idx) => (
+              {[ { icon: 'door', label: 'Rooms', action: () => router.push('/rooms') }, { icon: 'bed-outline', label: 'Capsule' }, { icon: 'qrcode-scan', label: 'Scan', action: handleOpenScanner }].map((item, idx) => (
                  <TouchableOpacity key={idx} style={styles.quickCard} onPress={item.action || (() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light))}>
                     <MaterialCommunityIcons name={item.icon as any} size={28} color={THEME.colors.primary} />
                     <Text style={styles.quickText}>{item.label}</Text>
@@ -304,7 +304,7 @@ export default function DashboardScreen() {
               <Feather name="home" size={24} color={THEME.colors.primary} />
               <View style={styles.navIndicator} />
            </TouchableOpacity>
-           <TouchableOpacity style={styles.navItem} onPress={() => {}}>
+           <TouchableOpacity style={styles.navItem} onPress={() => router.push('/rooms')}>
               <Feather name="map" size={24} color={THEME.colors.textMuted} style={{ opacity: 0.5 }} />
            </TouchableOpacity>
            
@@ -392,7 +392,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1.2,
   },
   userName: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '400',
     color: '#000000',
     fontFamily: Platform.select({ ios: 'Georgia', android: 'serif', web: 'Georgia, serif' }),
